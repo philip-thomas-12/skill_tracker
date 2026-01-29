@@ -36,6 +36,9 @@ A Flutter application for tracking skills and learning progress, built for IT st
         - *The collections will be created automatically by the app; you do not need to create them manually.*
    - Place `google-services.json` in `android/app/`.
    - Place `GoogleService-Info.plist` in `ios/Runner/`.
+   - **Google Sign-In Setup**:
+     - **Android**: Generate your SHA-1 key (`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android`) and add it to your Firebase Project settings under the Android app.
+     - **iOS**: Ensure the `REVERSE_CLIENT_ID` from your `GoogleService-Info.plist` is added as a URL Scheme in iOS project settings (Runner -> Info -> URL Types).
 
 3. **Install Dependencies**:
    ```bash
