@@ -7,19 +7,17 @@ import 'screens/auth/login_page.dart';
 import 'screens/auth/signup_page.dart'; 
 import 'screens/auth/auth_wrapper.dart';
 import 'screens/dashboard/dashboard_page.dart';
-// import 'firebase_options.dart'; // User needs to provide this
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // TODO: Uncomment this when user adds firebase_options.dart or google-services.json
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-  // For now, we will try to init, but catch error if config is missing to avoid crash during dev
+  
   try {
-     await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (e) {
-    print("Firebase init failed (expected if no config): $e");
+    print("Firebase init failed: $e");
   }
 
   runApp(const SkillTrackerApp());
