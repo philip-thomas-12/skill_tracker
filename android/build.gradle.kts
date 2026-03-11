@@ -4,6 +4,16 @@ allprojects {
         mavenCentral()
     }
 }
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.1.0") // match Flutter's recommended version
+        classpath("com.google.gms:google-services:4.4.0") // Firebase plugin
+    }
+}
 
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory

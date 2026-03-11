@@ -1,0 +1,763 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/skill_service.dart';
+import 'quiz_page.dart';
+
+class SkillDetailPage extends StatefulWidget {
+  final String skillId;
+  final String skillName;
+  final String category;
+  final String difficulty;
+
+  const SkillDetailPage({
+    super.key,
+    required this.skillId,
+    required this.skillName,
+    required this.category,
+    required this.difficulty,
+  });
+
+  @override
+  State<SkillDetailPage> createState() => _SkillDetailPageState();
+}
+
+class _SkillDetailPageState extends State<SkillDetailPage> {
+  final SkillService _skillService = SkillService();
+  final _noteController = TextEditingController();
+  bool _isLogging = false;
+
+  // Practice time options in minutes
+  final List<int> _practiceTimes = [15, 30, 45, 60, 90, 120];
+  int _selectedMinutes = 30;
+  String? _selectedTopic;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F1014),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0F1014),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.skillName,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.white70),
+            onPressed: _showEditDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: _showDeleteDialog,
+          ),
+        ],
+      ),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: _skillService.getSkill(widget.skillId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF2ECC71)));
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(
+              child: Text(
+                'Skill not found',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          final skillData = snapshot.data!.data() as Map<String, dynamic>;
+          
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Progress Card
+                _buildProgressCard(skillData),
+                const SizedBox(height: 20),
+                
+                // Stats Row
+                _buildStatsRow(skillData),
+                const SizedBox(height: 25),
+                
+                // Syllabus Section
+                _buildSyllabusSection(skillData),
+                const SizedBox(height: 25),
+                
+                // Practice Logs Header
+                const Text(
+                  "Practice History",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                
+                // Practice Logs List
+                _buildPracticeLogs(),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProgressCard(Map<String, dynamic> skillData) {
+    double progress = (skillData['progress'] ?? 0.0).toDouble();
+    int currentLevel = skillData['currentLevel'] ?? 1;
+    int targetLevel = skillData['targetLevel'] ?? 5;
+    int totalMinutes = skillData['totalMinutes'] ?? 0;
+    
+    // Calculate next level progress
+    int minutesForNextLevel = (currentLevel * 60) - totalMinutes;
+    if (minutesForNextLevel < 0) minutesForNextLevel = 0;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF2ECC71).withOpacity(0.2),
+            const Color(0xFF1C1E24),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF2ECC71).withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.skillName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "${widget.category} • ${widget.difficulty}",
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2ECC71).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  "$currentLevel/$targetLevel",
+                  style: const TextStyle(
+                    color: Color(0xFF2ECC71),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // Progress Bar
+          Stack(
+            children: [
+              Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: progress.clamp(0.0, 1.0),
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2ECC71), Color(0xFF27AE60)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Progress: ${(progress * 100).toInt()}%",
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              if (currentLevel < targetLevel)
+                Text(
+                  "$minutesForNextLevel min to level ${currentLevel + 1}",
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsRow(Map<String, dynamic> skillData) {
+    int totalMinutes = skillData['totalMinutes'] ?? 0;
+    int totalHours = (totalMinutes / 60).floor();
+    int remainingMinutes = totalMinutes % 60;
+    
+    return Row(
+      children: [
+        _buildStatCard(
+          icon: Icons.timer,
+          value: totalHours > 0 ? "${totalHours}h ${remainingMinutes}m" : "${totalMinutes}m",
+          label: "Total Time",
+        ),
+        const SizedBox(width: 12),
+        _buildStatCard(
+          icon: Icons.trending_up,
+          value: "${((skillData['progress'] ?? 0.0) * 100).toStringAsFixed(1)}%",
+          label: "Progress",
+        ),
+        const SizedBox(width: 12),
+        _buildStatCard(
+          icon: Icons.emoji_events,
+          value: "${skillData['currentLevel'] ?? 1}",
+          label: "Current Level",
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1E24),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: const Color(0xFF2ECC71), size: 20),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPracticeLogs() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _skillService.getPracticeLogs(widget.skillId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF2ECC71)));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1E24),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.history, color: Colors.white24, size: 40),
+                const SizedBox(height: 10),
+                const Text(
+                  "No practice logs yet",
+                  style: TextStyle(color: Colors.white38),
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  "Start logging your practice sessions!",
+                  style: TextStyle(color: Colors.white24, fontSize: 12),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final logs = snapshot.data!.docs;
+        
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: logs.length,
+          itemBuilder: (context, index) {
+            final log = logs[index].data() as Map<String, dynamic>;
+            final date = (log['date'] as Timestamp).toDate();
+            final minutes = log['minutes'] ?? 0;
+            final notes = log['notes'] ?? '';
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1E24),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2ECC71).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      "$minutes",
+                      style: const TextStyle(
+                        color: Color(0xFF2ECC71),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "${minutes} minutes of practice",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (notes.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            notes,
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Text(
+                    DateFormat('MMM d, HH:mm').format(date),
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTopicDropdown(Map<String, dynamic> skillData) {
+    List<dynamic> syllabus = skillData['syllabus'] ?? [];
+    if (syllabus.isEmpty) return const SizedBox.shrink();
+
+    List<String> topics = syllabus.map((e) => e['topic'] as String).toList();
+    if (_selectedTopic != null && !topics.contains(_selectedTopic)) {
+      _selectedTopic = null; // reset if syllabus changes
+    }
+    
+    // Auto-select first if none selected
+    if (_selectedTopic == null && topics.isNotEmpty) {
+      _selectedTopic = topics.first;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedTopic,
+          isExpanded: true,
+          hint: const Text("Select topic studied", style: TextStyle(color: Colors.white38)),
+          dropdownColor: const Color(0xFF1C1E24),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
+          items: topics.map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value, style: const TextStyle(color: Colors.white)),
+            );
+          }).toList(),
+          onChanged: (String? newValue) {
+            setState(() {
+              _selectedTopic = newValue;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSyllabusSection(Map<String, dynamic> skillData) {
+    List<dynamic> syllabus = skillData['syllabus'] ?? [];
+    if (syllabus.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "AI-Generated Syllabus",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 15),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: syllabus.length,
+          itemBuilder: (context, index) {
+            final topic = syllabus[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1E24),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          topic['topic'] ?? '',
+                          style: const TextStyle(
+                            color: Color(0xFF2ECC71),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.quiz, color: Colors.orange, size: 20),
+                        tooltip: "Take Quiz",
+                        onPressed: () => _launchQuizForTopic(skillData, topic['topic'] ?? ''),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    topic['description'] ?? '',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (topic['hours'] != null) ...[
+                    const SizedBox(height: 10),
+                    Builder(
+                      builder: (context) {
+                        Map<String, dynamic> topicProgress = skillData['topicProgress'] ?? {};
+                        int minCompleted = topicProgress[topic['topic']] ?? 0;
+                        double hrsCompleted = minCompleted / 60;
+                        
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white10,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                "Target: ${topic['hours']} hr${topic['hours'] == 1 ? '' : 's'}",
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              "${hrsCompleted.toStringAsFixed(1)} hrs completed",
+                              style: const TextStyle(
+                                color: Color(0xFF2ECC71),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                    ),
+                  ],
+                  if (topic['resourceLinks'] != null && (topic['resourceLinks'] as List).isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: (topic['resourceLinks'] as List).map<Widget>((link) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: InkWell(
+                            onTap: () async {
+                              final url = Uri.parse(link.toString());
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url);
+                              }
+                            },
+                            child: Row(
+                              children: [
+                                const Icon(Icons.link, color: Colors.blueAccent, size: 14),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    link.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.blueAccent,
+                                      fontSize: 12,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _launchQuizForTopic(Map<String, dynamic> skillData, String topicName) {
+    if (topicName.isEmpty) return;
+    
+    List<dynamic> syllabus = skillData['syllabus'] ?? [];
+    Map<String, dynamic>? selectedTopicData;
+    try {
+      selectedTopicData = syllabus.firstWhere((t) => t['topic'] == topicName) as Map<String, dynamic>;
+    } catch (_) {}
+    
+    // Fallback topic target hours to 10 if not found
+    int targetTopicHours = 10;
+    if (selectedTopicData != null && selectedTopicData['hours'] != null) {
+      targetTopicHours = (selectedTopicData['hours'] is int) 
+          ? selectedTopicData['hours'] 
+          : int.tryParse(selectedTopicData['hours'].toString()) ?? 10;
+    }
+    
+    // Minutes completed explicitly for this topic
+    Map<String, dynamic> topicProgress = skillData['topicProgress'] ?? {};
+    int minCompleted = topicProgress[topicName] ?? 0;
+    
+    // Get user-defined hoursPerDay to grant upon passing test
+    int hoursPerDay = skillData['hoursPerDay'] ?? 2;
+    // We pass minites into QuizPage so it correctly logs "hoursPerDay * 60" min upon passing
+    int potentialMinutesToGain = hoursPerDay * 60;
+    
+    List<String> links = [];
+    if (selectedTopicData != null && selectedTopicData['resourceLinks'] != null) {
+      links = (selectedTopicData['resourceLinks'] as List).map((e) => e.toString()).toList();
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Launching Quiz for $topicName..."),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuizPage(
+          skillId: widget.skillId,
+          skillName: widget.skillName,
+          topic: topicName,
+          currentHours: minCompleted ~/ 60,
+          totalHours: targetTopicHours,
+          practiceMinutes: potentialMinutesToGain,
+          practiceNote: "Passed Quiz: $topicName",
+          resourceLinks: links,
+        ),
+      ),
+    );
+  }
+
+  void _showEditDialog() {
+    final nameController = TextEditingController(text: widget.skillName);
+    String selectedCategory = widget.category;
+    String selectedDifficulty = widget.difficulty;
+    int targetLevel = 5; // You might want to fetch this from skill data
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1E24),
+        title: const Text(
+          "Edit Skill",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Skill Name",
+                  labelStyle: const TextStyle(color: Colors.white38),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Colors.white12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFF2ECC71)),
+                  ),
+                ),
+              ),
+              // Add more fields as needed
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel", style: TextStyle(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Implement update logic
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2ECC71),
+            ),
+            child: const Text("Save", style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1E24),
+        title: const Text(
+          "Delete Skill",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          "Are you sure you want to delete this skill? All practice history will be lost.",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel", style: TextStyle(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await _skillService.deleteSkill(widget.skillId);
+              if (mounted) {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Go back to skill list
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+}
