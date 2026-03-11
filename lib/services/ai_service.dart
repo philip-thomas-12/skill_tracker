@@ -82,8 +82,9 @@ Return the result STRICTLY as a JSON object with this exact structure:
     int totalEstimatedHours,
     List<String> resourceLinks,
   ) async {
-    if (Env.geminiApiKey == 'YOUR_GEMINI_API_KEY_HERE') {
-      throw Exception('Please set your Gemini API key in lib/env.dart');
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty || apiKey == 'your_gemini_api_key_here') {
+      throw Exception('Please set your GEMINI_API_KEY in the .env file');
     }
 
     // Determine difficulty based on ratio of current hours to total hours
