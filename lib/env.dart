@@ -1,4 +1,5 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class Env {
-  // TODO: Replace this with your actual Gemini API Key from Google AI Studio
-  static const String geminiApiKey = 'AIzaSyAlA4HcLS59tdTm7pNC1MGt5wfLv7GIY8Y';
+  static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 }

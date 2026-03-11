@@ -18,6 +18,7 @@ dependencies:
   intl: ^0.18.1  # For date formatting
   flutter_local_notifications: ^17.0.0
   timezone: ^0.9.2
+  flutter_dotenv: ^5.1.0
   flutter:
     sdk: flutter
 
@@ -37,5 +38,6 @@ flutter:
   uses-material-design: true
 
   # Add assets here if needed
-  # assets:
-  #   - assets/images/
+  assets:
+    - .env
+    # - assets/images/

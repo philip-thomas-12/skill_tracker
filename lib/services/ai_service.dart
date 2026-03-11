@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import '../env.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AiService {
   final GenerativeModel _model;
@@ -8,7 +8,7 @@ class AiService {
   AiService()
       : _model = GenerativeModel(
           model: 'gemini-2.5-flash',
-          apiKey: Env.geminiApiKey,
+          apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
           generationConfig: GenerationConfig(
             responseMimeType: 'application/json',
           ),
@@ -21,8 +21,9 @@ class AiService {
     String targetLevel,
     int hoursPerDay,
   ) async {
-    if (Env.geminiApiKey == 'YOUR_GEMINI_API_KEY_HERE') {
-      throw Exception('Please set your Gemini API key in lib/env.dart');
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty || apiKey == 'your_gemini_api_key_here') {
+      throw Exception('Please set your GEMINI_API_KEY in the .env file');
     }
 
     final prompt = '''
