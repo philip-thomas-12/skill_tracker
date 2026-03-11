@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GeminiService {
-  static const String apiKey = "AIzaSyABGD6D2XXU7jT2ayhmS5cjnyMLunKqcuI";
+  static String get apiKey => dotenv.env['GEMINI_API_KEY'] ?? "";
   static const int maxRetries = 2; // Reduced from 3
   static const Duration timeoutDuration = Duration(seconds: 30);
 
