@@ -393,13 +393,26 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(width: 10),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text("Hi ${user?.displayName ?? 'User'}!",
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-            const Text("Community access",
-                style: TextStyle(color: Colors.white38, fontSize: 10)),
-          ]),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end, 
+              children: [
+                Text(
+                  "Hi ${user?.displayName ?? 'User'}!",
+                  style: const TextStyle(
+                      color: Colors.white, 
+                      fontSize: 14, 
+                      fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Text(
+                  "Community access",
+                  style: TextStyle(color: Colors.white38, fontSize: 10),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
           const SizedBox(width: 10),
           Container(
             height: 35,
@@ -830,12 +843,28 @@ class _HomePageState extends State<HomePage> {
       child: Row(children: [
         Icon(Icons.circle_outlined, color: col, size: 14),
         const SizedBox(width: 12),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 13)),
-          Text(sub, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-        ]),
-        const Spacer(),
-        Text(time, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, 
+            children: [
+              Text(
+                title, 
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                sub, 
+                style: const TextStyle(color: Colors.white38, fontSize: 10),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          time, 
+          style: const TextStyle(color: Colors.white38, fontSize: 11),
+        ),
       ]),
     );
   }
