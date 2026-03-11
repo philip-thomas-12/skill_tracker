@@ -3,6 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
 show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -46,8 +47,8 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBa4r8V4yYvtZZEbap98X9fDMwKUb4_Xcg',
+  static FirebaseOptions get web => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY_WEB'] ?? '',
     appId: '1:164150403704:web:2b87fd9442359a546a038d',
     messagingSenderId: '164150403704',
     projectId: 'skill-tracker-9ca6b',
@@ -56,16 +57,16 @@ class DefaultFirebaseOptions {
     measurementId: 'G-6496TFT3TJ',
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBKywO8iv8eSqW-FukwFQjEtifByeSUeWw',
+  static FirebaseOptions get android => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY_ANDROID'] ?? '',
     appId: '1:164150403704:android:4d1a4ed28012fd856a038d',
     messagingSenderId: '164150403704',
     projectId: 'skill-tracker-9ca6b',
     storageBucket: 'skill-tracker-9ca6b.firebasestorage.app',
   );
 
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBa4r8V4yYvtZZEbap98X9fDMwKUb4_Xcg',
+  static FirebaseOptions get windows => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY_WEB'] ?? '',
     appId: '1:164150403704:web:4dee51834e7170d36a038d',
     messagingSenderId: '164150403704',
     projectId: 'skill-tracker-9ca6b',
