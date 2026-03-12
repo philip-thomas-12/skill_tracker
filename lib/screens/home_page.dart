@@ -361,58 +361,66 @@ class _HomePageState extends State<HomePage> {
               style: GoogleFonts.poppins(
                   color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
         ]),
-        Row(children: [
-          // Streak Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: streak > 0 
-                    ? [Colors.orange, Colors.deepOrange]
-                    : [Colors.grey, Colors.grey],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  streak > 0 ? Icons.local_fire_department : Icons.lens,
-                  color: Colors.white,
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  streak > 0 ? "$streak day${streak == 1 ? '' : 's'}" : "No streak",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Streak Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: streak > 0 
+                        ? [Colors.orange, Colors.deepOrange]
+                        : [Colors.grey, Colors.grey],
                   ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      streak > 0 ? Icons.local_fire_department : Icons.lens,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      streak > 0 ? "$streak d" : "0", // Shortened to save space
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end, 
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      user?.displayName ?? 'User',
+                      style: const TextStyle(
+                          color: Colors.white, 
+                          fontSize: 13, 
+                          fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Text(
+                      "Community",
+                      style: TextStyle(color: Colors.white38, fontSize: 9),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end, 
-              children: [
-                Text(
-                  "Hi ${user?.displayName ?? 'User'}!",
-                  style: const TextStyle(
-                      color: Colors.white, 
-                      fontSize: 14, 
-                      fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const Text(
-                  "Community access",
-                  style: TextStyle(color: Colors.white38, fontSize: 10),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
+        ),
           const SizedBox(width: 10),
           Container(
             height: 35,
