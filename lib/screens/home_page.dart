@@ -421,13 +421,12 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-          const SizedBox(width: 10),
-          Container(
-            height: 35,
-            width: 35,
-            decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle),
-          ),
-        ])
+        const SizedBox(width: 10),
+        Container(
+          height: 35,
+          width: 35,
+          decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle),
+        ),
       ],
     );
   }
