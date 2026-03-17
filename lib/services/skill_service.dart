@@ -254,6 +254,69 @@ class SkillService {
         .snapshots();
   }
 
+  // ==================== DOCUMENTS & NOTES ====================
+  
+  // Upload a note/file for a specific topic
+  Future<void> uploadTopicNote({
+    required String skillId,
+    required String topicName,
+    required String customName,
+    required String downloadUrl,
+    required String storagePath,
+    required String fileType,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    // Add document to subcollection
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('skills')
+        .doc(skillId)
+        .collection('notes')
+        .add({
+      'topicName': topicName,
+      'name': customName,
+      'url': downloadUrl,
+      'path': storagePath,
+      'type': fileType, // 'image' or 'document'
+      'createdAt': Timestamp.now(),
+    });
+  }
+
+  // Get notes for a topic
+  Stream<QuerySnapshot> getTopicNotes(String skillId, String topicName) {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    return _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('skills')
+        .doc(skillId)
+        .collection('notes')
+        .where('topicName', isEqualTo: topicName)
+        // Removed orderBy('createdAt', descending: true) to avoid needing a composite index
+        .snapshots();
+  }
+
+  // Delete a note
+  Future<void> deleteTopicNote(String skillId, String noteId, String storagePath) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    // Delete from Firestore
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('skills')
+        .doc(skillId)
+        .collection('notes')
+        .doc(noteId)
+        .delete();
+  }
+
   // ==================== USER STATS ====================
 
   // Get user stats

@@ -222,6 +222,7 @@ class _HomePageState extends State<HomePage> {
                 // Pass both user and streak to header
                 _buildHeader(user, streak),
                 
+                
                 // Add streak message if streak exists
                 if (streak > 0)
                   Container(
@@ -430,6 +431,8 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
+
+
   
   Widget _card({required Widget child, double? height}) {
     return Container(

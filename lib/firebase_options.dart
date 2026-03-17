@@ -3,7 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
 show defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'env.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -48,30 +48,30 @@ class DefaultFirebaseOptions {
   }
 
   static FirebaseOptions get web => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY_WEB'] ?? '',
-    appId: '1:164150403704:web:2b87fd9442359a546a038d',
-    messagingSenderId: '164150403704',
-    projectId: 'skill-tracker-9ca6b',
-    authDomain: 'skill-tracker-9ca6b.firebaseapp.com',
-    storageBucket: 'skill-tracker-9ca6b.firebasestorage.app',
-    measurementId: 'G-6496TFT3TJ',
+    apiKey: Env.firebaseApiKey,
+    appId: Env.firebaseAppId,
+    messagingSenderId: Env.firebaseMessagingSenderId,
+    projectId: Env.firebaseProjectId,
+    authDomain: Env.firebaseAuthDomain,
+    storageBucket: Env.firebaseStorageBucket,
+    measurementId: 'G-6496TFT3TJ', // Optional
   );
 
   static FirebaseOptions get android => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY_ANDROID'] ?? '',
-    appId: '1:164150403704:android:4d1a4ed28012fd856a038d',
-    messagingSenderId: '164150403704',
-    projectId: 'skill-tracker-9ca6b',
-    storageBucket: 'skill-tracker-9ca6b.firebasestorage.app',
+    apiKey: Env.firebaseApiKey,
+    appId: Env.firebaseAppId,
+    messagingSenderId: Env.firebaseMessagingSenderId,
+    projectId: Env.firebaseProjectId,
+    storageBucket: Env.firebaseStorageBucket,
   );
 
   static FirebaseOptions get windows => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY_WEB'] ?? '',
-    appId: '1:164150403704:web:4dee51834e7170d36a038d',
-    messagingSenderId: '164150403704',
-    projectId: 'skill-tracker-9ca6b',
-    authDomain: 'skill-tracker-9ca6b.firebaseapp.com',
-    storageBucket: 'skill-tracker-9ca6b.firebasestorage.app',
-    measurementId: 'G-K594PKY3ST',
+    apiKey: Env.firebaseApiKey,
+    appId: Env.firebaseAppId,
+    messagingSenderId: Env.firebaseMessagingSenderId,
+    projectId: Env.firebaseProjectId,
+    authDomain: Env.firebaseAuthDomain,
+    storageBucket: Env.firebaseStorageBucket,
+    measurementId: 'G-K594PKY3ST', // Optional
   );
 }

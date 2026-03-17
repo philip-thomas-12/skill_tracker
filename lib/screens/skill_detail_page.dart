@@ -1,8 +1,22 @@
+import 'dart:io';
+import 'dart:async';
+import 'package:dio/dio.dart';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:path/path.dart' as p;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 import '../services/skill_service.dart';
+import '../env.dart';
+import '../widgets/camera_dialog.dart';
 import 'quiz_page.dart';
 
 class SkillDetailPage extends StatefulWidget {
@@ -481,125 +495,12 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
           itemCount: syllabus.length,
           itemBuilder: (context, index) {
             final topic = syllabus[index];
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1C1E24),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          topic['topic'] ?? '',
-                          style: const TextStyle(
-                            color: Color(0xFF2ECC71),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(Icons.quiz, color: Colors.orange, size: 20),
-                        tooltip: "Take Quiz",
-                        onPressed: () => _launchQuizForTopic(skillData, topic['topic'] ?? ''),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    topic['description'] ?? '',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                    ),
-                  ),
-                  if (topic['hours'] != null) ...[
-                    const SizedBox(height: 10),
-                    Builder(
-                      builder: (context) {
-                        Map<String, dynamic> topicProgress = skillData['topicProgress'] ?? {};
-                        int minCompleted = topicProgress[topic['topic']] ?? 0;
-                        double hrsCompleted = minCompleted / 60;
-                        
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white10,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                "Target: ${topic['hours']} hr${topic['hours'] == 1 ? '' : 's'}",
-                                style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              "${hrsCompleted.toStringAsFixed(1)} hrs completed",
-                              style: const TextStyle(
-                                color: Color(0xFF2ECC71),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-                    ),
-                  ],
-                  if (topic['resourceLinks'] != null && (topic['resourceLinks'] as List).isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: (topic['resourceLinks'] as List).map<Widget>((link) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: InkWell(
-                            onTap: () async {
-                              final url = Uri.parse(link.toString());
-                              if (await canLaunchUrl(url)) {
-                                await launchUrl(url);
-                              }
-                            },
-                            child: Row(
-                              children: [
-                                const Icon(Icons.link, color: Colors.blueAccent, size: 14),
-                                const SizedBox(width: 5),
-                                Expanded(
-                                  child: Text(
-                                    link.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.blueAccent,
-                                      fontSize: 12,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ],
-              ),
+            return _SyllabusItemWidget(
+              topic: topic,
+              skillData: skillData,
+              skillId: widget.skillId,
+              skillName: widget.skillName,
+              onQuizTap: () => _launchQuizForTopic(skillData, topic['topic'] ?? ''),
             );
           },
         ),
@@ -759,5 +660,502 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
   void dispose() {
     _noteController.dispose();
     super.dispose();
+  }
+}
+
+// ============== NEW SYLLABUS ITEM WIDGET ==============
+
+class _SyllabusItemWidget extends StatefulWidget {
+  final Map<String, dynamic> topic;
+  final Map<String, dynamic> skillData;
+  final String skillId;
+  final String skillName;
+  final VoidCallback onQuizTap;
+
+  const _SyllabusItemWidget({
+    required this.topic,
+    required this.skillData,
+    required this.skillId,
+    required this.skillName,
+    required this.onQuizTap,
+  });
+
+  @override
+  State<_SyllabusItemWidget> createState() => _SyllabusItemWidgetState();
+}
+
+class _SyllabusItemWidgetState extends State<_SyllabusItemWidget> {
+  bool _isExpanded = false;
+  bool _isUploading = false;
+  final SkillService _skillService = SkillService();
+
+  Future<void> _handleFileUpload(bool fromCamera) async {
+    
+    Uint8List? fileBytes;
+    String? originalFileName;
+    String fileType = 'document';
+
+    if (fromCamera) {
+      final cameraResult = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (context) => const CameraDialog(),
+      );
+
+      if (cameraResult != null) {
+        fileBytes = cameraResult['bytes'] as Uint8List;
+        originalFileName = cameraResult['name'] as String;
+        
+        // Sanitize
+        originalFileName = originalFileName.replaceAll(RegExp(r'[^a-zA-Z0-9.]'), '_');
+
+        // Ensure camera photo has an extension for Cloudinary
+        if (!originalFileName.contains('.')) {
+          originalFileName += '.jpg';
+        }
+        fileType = 'image';
+      }
+    } else {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'],
+        withData: true, // Need bytes for web compatibility
+      );
+      if (result != null && result.files.isNotEmpty) {
+        fileBytes = result.files.first.bytes;
+        originalFileName = result.files.first.name;
+
+        // SANITIZE FILENAME: Remove spaces and special characters for Cloudinary compatibility
+        originalFileName = originalFileName.replaceAll(RegExp(r'[^a-zA-Z0-9.]'), '_');
+        if (originalFileName.length > 50) {
+          final ext = p.extension(originalFileName);
+          originalFileName = originalFileName.substring(0, 40) + ext;
+        }
+
+        final ext = p.extension(originalFileName).toLowerCase();
+        if (ext == '.png' || ext == '.jpg' || ext == '.jpeg') {
+          fileType = 'image';
+        }
+      }
+    }
+
+    if (fileBytes == null || originalFileName == null) return;
+
+    // Ask for custom name AFTER the picture is taken/selected
+    final nameController = TextEditingController();
+    if (mounted) {
+      final customName = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1C1E24),
+          title: const Text("Name your note", style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: nameController,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: "E.g., Lecture 1 Notes",
+              hintStyle: TextStyle(color: Colors.white38),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white12)),
+              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2ECC71))),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.white38)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameController.text.trim().isNotEmpty) {
+                  Navigator.pop(context, nameController.text.trim());
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2ECC71)),
+              child: const Text("Upload", style: TextStyle(color: Colors.black)),
+            ),
+          ],
+        ),
+      );
+
+      if (customName == null || customName.isEmpty) return;
+      
+      setState(() => _isUploading = true);
+
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        print("Starting Cloudinary upload process for user: ${user?.uid ?? 'NULL'}");
+        if (user == null) {
+          throw Exception("You must be logged in to upload notes.");
+        }
+
+        // Initialize Cloudinary
+        final cloudinary = CloudinaryPublic(
+          Env.cloudinaryCloudName,
+          Env.cloudinaryUploadPreset,
+          cache: false,
+        );
+
+        // FORCE Image resource type even for PDFs because Cloudinary serves them 
+        // with better preview headers in the 'image' category.
+        CloudinaryResourceType resourceType = CloudinaryResourceType.Image;
+        
+        // Add a unique prefix to filename to avoid collisions and cache issues
+        final uniqueId = DateTime.now().millisecondsSinceEpoch;
+        final sanitizedName = originalFileName.replaceAll(RegExp(r'[^a-zA-Z0-9.]'), '_');
+        final uploadId = "note_${uniqueId}_$sanitizedName";
+
+        print("Uploading to Cloudinary... Cloud: ${Env.cloudinaryCloudName}, Preset: ${Env.cloudinaryUploadPreset}, ID: $uploadId");
+        
+        CloudinaryResponse response = await cloudinary.uploadFile(
+          CloudinaryFile.fromBytesData(
+            fileBytes,
+            identifier: uploadId,
+            resourceType: resourceType,
+          ),
+        );
+
+        final downloadUrl = response.secureUrl;
+        final publicId = response.publicId;
+        print("Got Cloudinary URL: $downloadUrl");
+
+        print("Writing metadata to Firestore...");
+        await _skillService.uploadTopicNote(
+          skillId: widget.skillId,
+          topicName: widget.topic['topic'] ?? '',
+          customName: customName,
+          downloadUrl: downloadUrl,
+          storagePath: publicId, // Using Cloudinary publicId as storagePath
+          fileType: fileType,
+        );
+        print("Upload flow fully complete!");
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Note uploaded successfully to Cloudinary!"), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e, stacktrace) {
+        print("Upload Error: $e");
+        if (e is DioException) {
+          print("Cloudinary Response Body: ${e.response?.data}");
+          print("Cloudinary Status Code: ${e.response?.statusCode}");
+        }
+        print("Stacktrace: $stacktrace");
+        
+        if (mounted) {
+          String displayError = e.toString();
+          if (e is DioException && e.response?.data != null) {
+            final data = e.response?.data;
+            if (data is Map && data.containsKey('error')) {
+              displayError = "Cloudinary Error: ${data['error']['message']}";
+            } else {
+              displayError = "Cloudinary Error: $data";
+            }
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to upload: $displayError"), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1E24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: _isExpanded,
+          onExpansionChanged: (expanded) {
+            setState(() {
+              _isExpanded = expanded;
+            });
+          },
+          tilePadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+          collapsedIconColor: Colors.white54,
+          iconColor: const Color(0xFF2ECC71),
+          title: Text(
+            widget.topic['topic'] ?? '',
+            style: const TextStyle(
+              color: Color(0xFF2ECC71),
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Text(
+              widget.topic['description'] ?? '',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              maxLines: _isExpanded ? null : 2,
+              overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+            ),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(15, 0, 15, 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   const Divider(color: Colors.white10),
+                   const SizedBox(height: 10),
+                   
+                   // Target Hours & Progress
+                   if (widget.topic['hours'] != null) ...[
+                      Builder(
+                        builder: (context) {
+                          Map<String, dynamic> topicProgress = widget.skillData['topicProgress'] ?? {};
+                          int minCompleted = topicProgress[widget.topic['topic']] ?? 0;
+                          double hrsCompleted = minCompleted / 60;
+                          
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white10,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  "Target: ${widget.topic['hours']} hr${widget.topic['hours'] == 1 ? '' : 's'}",
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                "${hrsCompleted.toStringAsFixed(1)} hrs completed",
+                                style: const TextStyle(
+                                  color: Color(0xFF2ECC71),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                      ),
+                      const SizedBox(height: 15),
+                   ],
+
+                   // Links Section
+                   if (widget.topic['resourceLinks'] != null && (widget.topic['resourceLinks'] as List).isNotEmpty) ...[
+                      const Text("Resources", style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 5),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: (widget.topic['resourceLinks'] as List).map<Widget>((link) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: InkWell(
+                              onTap: () async {
+                                final urlString = link.toString();
+                                try {
+                                  print("Launching Resource URL: $urlString");
+                                  if (kIsWeb) {
+                                    html.window.open(urlString, '_blank');
+                                  } else {
+                                    await launchUrl(Uri.parse(urlString), mode: LaunchMode.externalApplication);
+                                  }
+                                } catch (e) {
+                                  print("Could not launch $urlString: $e");
+                                }
+                              },
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.link, color: Colors.blueAccent, size: 14),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: Text(
+                                      link.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.blueAccent,
+                                        fontSize: 12,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 15),
+                   ],
+
+                   // Notes & Files Section
+                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                     children: [
+                       const Text("Your Notes & Files", style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)),
+                       Row(
+                         children: [
+                           IconButton(
+                             icon: const Icon(Icons.camera_alt, color: Color(0xFF2ECC71), size: 20),
+                             onPressed: _isUploading ? null : () => _handleFileUpload(true),
+                             tooltip: "Take Photo",
+                             constraints: const BoxConstraints(),
+                             padding: const EdgeInsets.symmetric(horizontal: 5),
+                           ),
+                           IconButton(
+                             icon: const Icon(Icons.upload_file, color: Color(0xFF2ECC71), size: 20),
+                             onPressed: _isUploading ? null : () => _handleFileUpload(false),
+                             tooltip: "Upload File",
+                             constraints: const BoxConstraints(),
+                             padding: const EdgeInsets.symmetric(horizontal: 5),
+                           ),
+                         ],
+                       )
+                     ],
+                   ),
+                   const SizedBox(height: 5),
+                   
+                   if (_isUploading)
+                     const Padding(
+                       padding: EdgeInsets.symmetric(vertical: 10),
+                       child: Center(child: LinearProgressIndicator(color: Color(0xFF2ECC71), backgroundColor: Colors.white10)),
+                     ),
+
+                   // Notes StreamBuilder
+                     StreamBuilder<QuerySnapshot>(
+                     stream: _skillService.getTopicNotes(widget.skillId, widget.topic['topic'] ?? ''),
+                     builder: (context, snapshot) {
+                       if (snapshot.connectionState == ConnectionState.waiting) {
+                         return const Center(child: Padding(
+                           padding: EdgeInsets.all(8.0),
+                           child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Color(0xFF2ECC71), strokeWidth: 2)),
+                         ));
+                       }
+                       if (snapshot.hasError) {
+                         print("StreamBuilder notes error: ${snapshot.error}");
+                         return Center(child: Padding(
+                           padding: const EdgeInsets.symmetric(vertical: 10),
+                           child: Text("Error loading notes: ${snapshot.error}", style: const TextStyle(color: Colors.red, fontSize: 12)),
+                         ));
+                       }
+                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                         return const Padding(
+                           padding: EdgeInsets.symmetric(vertical: 10),
+                           child: Text("No notes uploaded yet. Add some!", style: TextStyle(color: Colors.white38, fontSize: 12)),
+                         );
+                       }
+
+                       final notes = snapshot.data!.docs.toList();
+                       // Manually sort notes by createdAt descending since we removed orderBy
+                       notes.sort((a, b) {
+                         final aData = a.data() as Map<String, dynamic>;
+                         final bData = b.data() as Map<String, dynamic>;
+                         final aTime = (aData['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                         final bTime = (bData['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                         return bTime.compareTo(aTime);
+                       });
+
+                       return Wrap(
+                         spacing: 10,
+                         runSpacing: 10,
+                         children: notes.map((doc) {
+                           final data = doc.data() as Map<String, dynamic>;
+                           final isImage = data['type'] == 'image';
+                           return InkWell(
+                              onTap: () async {
+                                final urlString = data['url'];
+                                try {
+                                  print("Launching Note URL: $urlString");
+                                  if (kIsWeb) {
+                                    html.window.open(urlString, '_blank');
+                                  } else {
+                                    await launchUrl(Uri.parse(urlString), mode: LaunchMode.externalApplication);
+                                  }
+                                } catch (e) {
+                                  print("Could not launch $urlString: $e");
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("Error opening file: $e"), backgroundColor: Colors.red),
+                                    );
+                                  }
+                                }
+                              },
+                             onLongPress: () {
+                               // Confirm delete
+                               showDialog(
+                                 context: context,
+                                 builder: (context) => AlertDialog(
+                                   backgroundColor: const Color(0xFF1C1E24),
+                                   title: const Text("Delete Note?", style: TextStyle(color: Colors.white)),
+                                   content: Text("Are you sure you want to delete '${data['name']}'?", style: const TextStyle(color: Colors.white70)),
+                                   actions: [
+                                     TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+                                     TextButton(
+                                       onPressed: () {
+                                         _skillService.deleteTopicNote(widget.skillId, doc.id, data['path']);
+                                         Navigator.pop(context);
+                                       }, 
+                                       child: const Text("Delete", style: TextStyle(color: Colors.red))
+                                     )
+                                   ],
+                                 )
+                               );
+                             },
+                             child: Container(
+                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                               decoration: BoxDecoration(
+                                 color: Colors.white.withOpacity(0.05),
+                                 borderRadius: BorderRadius.circular(8),
+                                 border: Border.all(color: Colors.white10),
+                                ),
+                               child: Row(
+                                 mainAxisSize: MainAxisSize.min,
+                                 children: [
+                                   Icon(isImage ? Icons.image : Icons.description, color: Colors.blueAccent, size: 16),
+                                   const SizedBox(width: 8),
+                                   Text(
+                                     data['name'] ?? 'Note', 
+                                     style: const TextStyle(color: Colors.white, fontSize: 12),
+                                   ),
+                                 ],
+                               ),
+                             ),
+                           );
+                         }).toList(),
+                       );
+                     },
+                   ),
+                   const SizedBox(height: 15),
+
+                   // Take Quiz Button
+                   SizedBox(
+                     width: double.infinity,
+                     child: ElevatedButton.icon(
+                       onPressed: widget.onQuizTap,
+                       icon: const Icon(Icons.quiz, color: Colors.white, size: 18),
+                       label: const Text("Take Quiz", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                       style: ElevatedButton.styleFrom(
+                         backgroundColor: Colors.orange,
+                         padding: const EdgeInsets.symmetric(vertical: 12),
+                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                       ),
+                     ),
+                   )
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
   }
 }
