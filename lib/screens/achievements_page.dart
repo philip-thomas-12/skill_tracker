@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/achievement_service.dart';
 import '../models/achievement_model.dart';
 
@@ -380,17 +381,148 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   color: Colors.white54,
                   size: 18,
                 ),
-                onPressed: () {
-                  String shareMessage = "I'm thrilled to share that I just unlocked the '${achievement.title}' achievement in Skill Tracker! 🏆\n\n"
-                      "Dedication and consistent practice pay off. I've been using Skill Tracker to map my learning journey and stay consistent with my goals.\n\n"
-                      "Achievement unlocked: ${achievement.title} - ${achievement.description}\n\n"
-                      "#LearningJourney #SkillTracker #ContinuousLearning #GrowthMindset #AchievementUnlocked";
-                      
-                  Share.share(shareMessage);
-                },
+                onPressed: () => _showShareMenu(context, achievement),
                 tooltip: "Share Achievement",
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  void _showShareMenu(BuildContext context, Achievement achievement) {
+    String shareMessage = "I'm thrilled to share that I just unlocked the '${achievement.title}' achievement in SkillTracker! 🏆\n\n"
+        "Dedication and consistent practice pay off. I've been using SkillTracker to map my learning journey and stay consistent with my goals.\n\n"
+        "Achievement unlocked: ${achievement.title} - ${achievement.description}\n\n"
+        "#LearningJourney #SkillTracker #ContinuousLearning #GrowthMindset #AchievementUnlocked";
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1E24),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Share Achievement",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 20,
+                runSpacing: 20,
+                children: [
+                  _ShareOptionButton(
+                    icon: Icons.work,
+                    label: "LinkedIn",
+                    color: const Color(0xFF0077B5),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _launchUrl('https://www.linkedin.com/sharing/share-offsite/?url=https://skilltracker.app&summary=${Uri.encodeComponent(shareMessage)}');
+                    },
+                  ),
+                  _ShareOptionButton(
+                    icon: Icons.close, // Using close as a placeholder for 'X' logo
+                    label: "X (Twitter)",
+                    color: Colors.black,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _launchUrl('https://twitter.com/intent/tweet?text=${Uri.encodeComponent(shareMessage)}');
+                    },
+                  ),
+                  _ShareOptionButton(
+                    icon: Icons.facebook,
+                    label: "Facebook",
+                    color: const Color(0xFF1877F2),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _launchUrl('https://www.facebook.com/sharer/sharer.php?u=https://skilltracker.app&quote=${Uri.encodeComponent(shareMessage)}');
+                    },
+                  ),
+                  _ShareOptionButton(
+                    icon: Icons.copy,
+                    label: "Copy",
+                    color: Colors.grey,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Clipboard.setData(ClipboardData(text: shareMessage));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Achievement copied to clipboard!"),
+                          backgroundColor: Color(0xFF2ECC71),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _launchUrl(String uriString) async {
+    final Uri url = Uri.parse(uriString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      debugPrint("Could not launch $url");
+    }
+  }
+}
+
+class _ShareOptionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ShareOptionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color == Colors.black ? Colors.white12 : color.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: color == Colors.black ? Colors.white : color,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );

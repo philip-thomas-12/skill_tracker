@@ -415,7 +415,7 @@ class _HomePageState extends State<HomePage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      data['fullName'] ?? user?.displayName ?? 'User',
+                      data['fullName'] ?? user?.displayName ?? user?.email?.split('@')[0] ?? 'User',
                       style: const TextStyle(
                           color: Colors.white, 
                           fontSize: 13, 

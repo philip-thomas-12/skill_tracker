@@ -170,27 +170,34 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.skillName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.skillName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "${widget.category} • ${widget.difficulty}",
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 14,
+                    const SizedBox(height: 4),
+                    Text(
+                      "${widget.category} • ${widget.difficulty}",
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 10),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(

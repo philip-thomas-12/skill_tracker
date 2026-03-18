@@ -242,8 +242,7 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     
     // Update total leaderboard points immediately after quiz
     try {
-      // The increment above is tracked. We just need to trigger the point tallying but it depends on context.
-      // Wait, skill list page refreshes on load anyway. Let's let the DB catch up.
+      await SkillService().refreshUserStats();
     } catch (e) {
       print("Error recording quiz points: $e");
     }

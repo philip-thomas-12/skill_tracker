@@ -379,17 +379,6 @@ class SkillService {
 
     final skills = skillsSnapshot.docs;
     
-    if (skills.isEmpty) {
-      await _firestore.collection('users').doc(user.uid).set({
-        'skills': 0,
-        'minutes': 0,
-        'progress': 0.0,
-        'hours': 0,
-        'done': 0,
-      }, SetOptions(merge: true));
-      return;
-    }
-
     // Calculate stats
     int totalMinutes = 0;
     double totalProgress = 0.0;

@@ -57,7 +57,11 @@ class LeaderboardPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final userData = users[index].data() as Map<String, dynamic>;
               final points = userData['leaderboardPoints'] ?? 0;
-              final name = userData['fullName'] ?? 'Anonymous';
+              final name = userData['fullName'] ?? 'User';
+              final minutes = userData['minutes'] ?? 0;
+              final quizzes = userData['totalQuizMarks'] ?? 0;
+              final skills = userData['skills'] ?? 0;
+              final badges = (userData['achievements'] as List?)?.length ?? 0;
               final isTopThree = index < 3;
 
               return Container(
@@ -113,9 +117,19 @@ class LeaderboardPage extends StatelessWidget {
                             "$points PTS",
                             style: GoogleFonts.poppins(
                               color: const Color(0xFF2ECC71),
-                              fontSize: 12,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "$skills Skills • $minutes Mins • $quizzes Quiz Marks • $badges Badges",
+                            style: GoogleFonts.poppins(
+                              color: Colors.white54,
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
