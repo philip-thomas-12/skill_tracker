@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/achievement_service.dart';
 import '../models/achievement_model.dart';
 
@@ -358,7 +359,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
             ),
           ),
           
-          // Locked overlay
+          // Locked overlay or Share button
           if (!isUnlocked)
             const Positioned(
               top: 8,
@@ -366,7 +367,28 @@ class _AchievementsPageState extends State<AchievementsPage> {
               child: Icon(
                 Icons.lock,
                 color: Colors.white38,
-                size: 12,
+                size: 16,
+              ),
+            )
+          else
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IconButton(
+                icon: const Icon(
+                  Icons.share,
+                  color: Colors.white54,
+                  size: 18,
+                ),
+                onPressed: () {
+                  String shareMessage = "I'm thrilled to share that I just unlocked the '${achievement.title}' achievement in Skill Tracker! 🏆\n\n"
+                      "Dedication and consistent practice pay off. I've been using Skill Tracker to map my learning journey and stay consistent with my goals.\n\n"
+                      "Achievement unlocked: ${achievement.title} - ${achievement.description}\n\n"
+                      "#LearningJourney #SkillTracker #ContinuousLearning #GrowthMindset #AchievementUnlocked";
+                      
+                  Share.share(shareMessage);
+                },
+                tooltip: "Share Achievement",
               ),
             ),
         ],

@@ -237,6 +237,15 @@ class Achievement {
         threshold: 25,
         type: 'quiz',
       ),
+      Achievement(
+        id: 'topic_complete',
+        title: 'Topic Master',
+        description: 'Completed a syllabus topic',
+        icon: Icons.assignment_turned_in,
+        color: Colors.cyanAccent,
+        threshold: 1,
+        type: 'special',
+      ),
       
       // ========== SPECIAL ACHIEVEMENTS ==========
       Achievement(

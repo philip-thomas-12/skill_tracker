@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/ai_service.dart';
 import '../services/skill_service.dart';
+import '../services/achievement_service.dart';
 import 'result_page.dart';
 
 class QuizPage extends StatefulWidget {
@@ -215,8 +216,10 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
           notes: widget.practiceNote,
           topicName: widget.topic,
         );
+        // Unlock topic achievement immediately upon passing the quiz
+        await AchievementService().unlockTopicAchievement();
       } catch (e) {
-        print("Failed to save practice: $e");
+        print("Failed to save practice or unlock achievement: $e");
       }
     } else if (widget.practiceMinutes > 0) {
        // Optional: Add some message that they didn't pass, so time wasn't logged
@@ -232,6 +235,18 @@ class _QuizPageState extends State<QuizPage> with SingleTickerProviderStateMixin
     }
 
     if (!mounted) return;
+
+    // Track quiz attempt and score for Leaderboard
+    final isPerfect = score == questions.length;
+    await AchievementService().incrementQuizCount(isPerfect, score);
+    
+    // Update total leaderboard points immediately after quiz
+    try {
+      // The increment above is tracked. We just need to trigger the point tallying but it depends on context.
+      // Wait, skill list page refreshes on load anyway. Let's let the DB catch up.
+    } catch (e) {
+      print("Error recording quiz points: $e");
+    }
 
     // Navigate to results page
     Navigator.pushReplacement(

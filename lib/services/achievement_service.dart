@@ -130,8 +130,8 @@ class AchievementService {
     });
   }
 
-  // Increment quiz count (call this when quiz is completed)
-  Future<void> incrementQuizCount(bool isPerfect) async {
+  // Increment quiz count and marks (call this when quiz is completed)
+  Future<void> incrementQuizCount(bool isPerfect, int score) async {
     final user = _auth.currentUser;
     if (user == null) return;
     
@@ -139,6 +139,7 @@ class AchievementService {
     
     await userRef.update({
       'quizzesTaken': FieldValue.increment(1),
+      'totalQuizMarks': FieldValue.increment(score),
     });
     
     if (isPerfect) {
@@ -149,5 +150,32 @@ class AchievementService {
     
     // Check achievements after updating quiz stats
     await checkAndUnlockAchievements();
+  }
+
+  // Check and unlock topic achievement specifically
+  Future<void> unlockTopicAchievement() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final userDoc = await userRef.get();
+    
+    if (!userDoc.exists) return;
+
+    final userData = userDoc.data() as Map<String, dynamic>;
+    List<String> unlockedAchievements = List<String>.from(userData['achievements'] ?? []);
+    
+    // Only unlock if not already unlocked
+    if (!unlockedAchievements.contains('topic_complete')) {
+      unlockedAchievements.add('topic_complete');
+      
+      await userRef.update({
+        'achievements': unlockedAchievements,
+        'lastUnlockedAchievements': ['topic_complete'],
+        'newAchievements': FieldValue.arrayUnion(['topic_complete']),
+        'updatedAt': Timestamp.now(),
+      });
+      print('🎉 New achievement unlocked: Topic Master');
+    }
   }
 }

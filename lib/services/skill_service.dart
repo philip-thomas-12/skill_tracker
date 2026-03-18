@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:skill_tracker/services/streak_service.dart'; // Add this import
+import 'package:intl/intl.dart';
+import 'package:skill_tracker/services/streak_service.dart';
+import 'package:skill_tracker/services/achievement_service.dart';
 
 class SkillService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -49,6 +51,14 @@ class SkillService {
     
     // Also update user's total stats
     await _updateUserStats();
+    
+    // Check achievements (e.g. for First Step, Skill Collector)
+    try {
+      final achievementService = AchievementService();
+      await achievementService.checkAndUnlockAchievements();
+    } catch (e) {
+      print('❌ Error checking achievements: $e');
+    }
   }
 
   // Get all skills stream
@@ -102,7 +112,13 @@ class SkillService {
       final data = skill.data() as Map<String, dynamic>;
       final newCurrent = currentLevel ?? data['currentLevel'] ?? 1;
       final newTarget = targetLevel ?? data['targetLevel'] ?? 5;
-      updates['progress'] = newCurrent / newTarget;
+      final targetHours = data['targetHours'] ?? 0;
+      
+      if (targetHours > 0) {
+        updates['progress'] = ((data['totalMinutes'] ?? 0) / (targetHours * 60)).clamp(0.0, 1.0);
+      } else {
+        updates['progress'] = (newCurrent / newTarget).clamp(0.0, 1.0);
+      }
     }
     
     updates['updatedAt'] = Timestamp.now();
@@ -215,12 +231,31 @@ class SkillService {
     int newLevel = 1 + (totalMinutes ~/ 60);
     newLevel = newLevel.clamp(1, targetLevel) as int;
     
-    if (newLevel != currentLevel) {
-      await skillRef.update({
-        'currentLevel': newLevel,
-        'progress': newLevel / targetLevel,
-      });
+    int targetHours = data['targetHours'] ?? 0;
+    double newProgress = 0.0;
+    if (targetHours > 0) {
+      newProgress = totalMinutes / (targetHours * 60);
+    } else {
+      newProgress = newLevel / targetLevel;
     }
+    
+    Map<String, dynamic> levelUpdates = {
+      'progress': newProgress.clamp(0.0, 1.0),
+    };
+    
+    if (newLevel != currentLevel) {
+      levelUpdates['currentLevel'] = newLevel;
+    }
+
+    await skillRef.update(levelUpdates);
+
+    // Track daily activity for Profile Heatmap
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    await _firestore.collection('users').doc(user.uid).set({
+      'dailyActivity': {
+        todayStr: FieldValue.increment(minutes),
+      }
+    }, SetOptions(merge: true));
 
     // Update user stats
     await _updateUserStats();
@@ -370,6 +405,16 @@ class SkillService {
     int hours = (totalMinutes / 60).round();
     int donePercent = (avgProgress * 100).round();
 
+    // Get user document to tally up other points components correctly
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final userData = userDoc.data() ?? {};
+    
+    int totalQuizMarks = userData['totalQuizMarks'] ?? 0;
+    int badgesCount = (userData['achievements'] as List?)?.length ?? 0;
+    
+    // Formula: (Total Minutes * 5) + (Total Quiz Marks * 10) + (Total Skills Added * 10) + (Total Badges/Achievements * 15)
+    int leaderboardPoints = (totalMinutes * 5) + (totalQuizMarks * 10) + (skillCount * 10) + (badgesCount * 15);
+
     // Update user document
     await _firestore.collection('users').doc(user.uid).set({
       'skills': skillCount,
@@ -377,7 +422,13 @@ class SkillService {
       'progress': avgProgress,
       'hours': hours,
       'done': donePercent,
+      'leaderboardPoints': leaderboardPoints,
     }, SetOptions(merge: true));
+  }
+
+  // Refresh user stats manually (useful for backfilling new stats on load)
+  Future<void> refreshUserStats() async {
+    await _updateUserStats();
   }
 
   // ==================== HELPER METHODS ====================

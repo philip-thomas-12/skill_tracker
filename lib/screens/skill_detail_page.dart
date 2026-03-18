@@ -13,11 +13,11 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
 import '../services/skill_service.dart';
 import '../env.dart';
 import '../widgets/camera_dialog.dart';
 import 'quiz_page.dart';
+import 'package:slide_to_act/slide_to_act.dart';
 
 class SkillDetailPage extends StatefulWidget {
   final String skillId;
@@ -963,10 +963,8 @@ class _SyllabusItemWidgetState extends State<_SyllabusItemWidget> {
                                 final urlString = link.toString();
                                 try {
                                   print("Launching Resource URL: $urlString");
-                                  if (kIsWeb) {
-                                    html.window.open(urlString, '_blank');
-                                  } else {
-                                    await launchUrl(Uri.parse(urlString), mode: LaunchMode.externalApplication);
+                                  if (!await launchUrl(Uri.parse(urlString), mode: LaunchMode.externalApplication)) {
+                                    throw Exception('Could not launch $urlString');
                                   }
                                 } catch (e) {
                                   print("Could not launch $urlString: $e");
@@ -1075,10 +1073,8 @@ class _SyllabusItemWidgetState extends State<_SyllabusItemWidget> {
                                 final urlString = data['url'];
                                 try {
                                   print("Launching Note URL: $urlString");
-                                  if (kIsWeb) {
-                                    html.window.open(urlString, '_blank');
-                                  } else {
-                                    await launchUrl(Uri.parse(urlString), mode: LaunchMode.externalApplication);
+                                  if (!await launchUrl(Uri.parse(urlString), mode: LaunchMode.externalApplication)) {
+                                    throw Exception('Could not launch $urlString');
                                   }
                                 } catch (e) {
                                   print("Could not launch $urlString: $e");
@@ -1136,18 +1132,26 @@ class _SyllabusItemWidgetState extends State<_SyllabusItemWidget> {
                    ),
                    const SizedBox(height: 15),
 
-                   // Take Quiz Button
-                   SizedBox(
-                     width: double.infinity,
-                     child: ElevatedButton.icon(
-                       onPressed: widget.onQuizTap,
-                       icon: const Icon(Icons.quiz, color: Colors.white, size: 18),
-                       label: const Text("Take Quiz", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                       style: ElevatedButton.styleFrom(
-                         backgroundColor: Colors.orange,
-                         padding: const EdgeInsets.symmetric(vertical: 12),
-                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                   // Take Quiz Swipe Button
+                   Padding(
+                     padding: const EdgeInsets.only(top: 8.0),
+                     child: SlideAction(
+                       onSubmit: () {
+                         widget.onQuizTap();
+                         return null;
+                       },
+                       borderRadius: 12,
+                       elevation: 0,
+                       innerColor: Colors.white,
+                       outerColor: Colors.orange.withOpacity(0.8),
+                       sliderButtonIcon: const Icon(Icons.quiz, color: Colors.orange),
+                       text: "Swipe to take Quiz",
+                       textStyle: const TextStyle(
+                         color: Colors.white,
+                         fontWeight: FontWeight.bold,
+                         fontSize: 15,
                        ),
+                       sliderRotate: false,
                      ),
                    )
                 ],

@@ -12,9 +12,12 @@ import '../models/achievement_model.dart';
 import '../widgets/achievement_popup.dart';
 import 'add_skill_page.dart';
 import 'skill_list_page.dart';
-import 'achievements_page.dart';
 import 'package:intl/intl.dart';
+import '../services/skill_service.dart';
 import '../login_page.dart';
+import 'profile_page.dart';
+import 'leaderboard_page.dart';
+import 'achievements_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -32,6 +35,13 @@ class _HomePageState extends State<HomePage> {
 
   // Services
   final GoalService _goalService = GoalService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Refresh user's global stats so they appear properly on Leaderboard
+    SkillService().refreshUserStats();
+  }
 
   // --- LOGOUT FUNCTION WITH DIALOG ---
   Future<void> logout() async {
@@ -134,6 +144,7 @@ class _HomePageState extends State<HomePage> {
       _buildExactDashboard(user),
       const SkillListPage(),
       const AchievementsPage(),
+      const LeaderboardPage(),
     ];
 
     return Scaffold(
@@ -219,8 +230,8 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Pass both user and streak to header
-                _buildHeader(user, streak),
+                // Pass user, streak, and data to header
+                _buildHeader(user, streak, data),
                 
                 
                 // Add streak message if streak exists
@@ -351,7 +362,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Header with streak display
-  Widget _buildHeader(User? user, int streak) {
+  Widget _buildHeader(User? user, int streak, Map<String, dynamic> data) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -404,7 +415,7 @@ class _HomePageState extends State<HomePage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      user?.displayName ?? 'User',
+                      data['fullName'] ?? user?.displayName ?? 'User',
                       style: const TextStyle(
                           color: Colors.white, 
                           fontSize: 13, 
@@ -423,10 +434,19 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(width: 10),
-        Container(
-          height: 35,
-          width: 35,
-          decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfilePage()),
+            );
+          },
+          child: Container(
+            height: 35,
+            width: 35,
+            decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle),
+            child: const Icon(Icons.person, color: Colors.white54, size: 20),
+          ),
         ),
       ],
     );
@@ -974,6 +994,7 @@ class _HomePageState extends State<HomePage> {
         BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: ""),
         BottomNavigationBarItem(icon: Icon(Icons.list_alt_rounded), label: ""),
         BottomNavigationBarItem(icon: Icon(Icons.star_outline_rounded), label: ""),
+        BottomNavigationBarItem(icon: Icon(Icons.leaderboard_rounded), label: ""),
       ],
     );
   }
