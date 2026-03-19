@@ -440,6 +440,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       _launchUrl('https://twitter.com/intent/tweet?text=${Uri.encodeComponent(shareMessage)}');
                     },
                   ),
+                  
                   _ShareOptionButton(
                     icon: Icons.facebook,
                     label: "Facebook",

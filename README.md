@@ -6,7 +6,7 @@ A new Flutter project.
 
 To run this project, you need to set up your own API keys for Gemini and Firebase:
 
-1.  Locate the `assets/.env.example` file in the project.
+1.  make a file named `assets/.env.example` file in the project.
 2.  Create a copy of it in the same folder named `assets/.env`.
 3.  Open `assets/.env` and replace the placeholder values with your actual API keys:
     *   `GEMINI_API_KEY`: Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey).
